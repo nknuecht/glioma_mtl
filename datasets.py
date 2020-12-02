@@ -74,7 +74,6 @@ class GeneralDataset(Dataset):
         self.returndims=returndims
         self.classes = classes
         self.return_max_slice = return_max_slice
-        self.axial_only = axial_only
         self.percentile = percentile
         self.validate_on_volume = validate_on_volume
         self.visualize = visualize
