@@ -159,8 +159,8 @@ class GeneralDataset(Dataset):
             seg_image[seg_image == 4] = 3
 
         label = self.metadata_df.iloc[idx][self.label] # 'cluster'
-        survival = self.metadata_df.iloc[idx]['OS.time']
-        event = self.metadata_df.iloc[idx]['_EVENT']
+        survival = self.metadata_df.iloc[idx]['OS']
+        event = self.metadata_df.iloc[idx]['OS_EVENT']
         tciaID = self.metadata_df.iloc[idx]['tciaID']
 
         image_null_value = np.zeros(image.shape).astype(np.float)
