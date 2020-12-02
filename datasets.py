@@ -195,6 +195,7 @@ class GeneralDataset(Dataset):
         if self.seg_transform: sample['seg_image'] = self.seg_transform(sample['seg_image'])
         if self.seg_transform: sample['seg_probs'] = self.seg_transform(sample['seg_probs'])
 
+        print('label', label)
         if tciaID != 0 and label.isin([0, 1]): # scan from the tcia.
             ## if the sample is from the TCIA that means that you have survival (for sure)
             if gt_seg == 1:
