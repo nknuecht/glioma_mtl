@@ -274,7 +274,7 @@ class GBMNetMTL(nn.Module):
         # Classification Loss
         class_loss = self.class_loss(out, class_labels.long())
 
-        loss_surv, ci = torch.tensor(0).to(self.device), -1 ## hack should leave this out.
+        loss_surv, ci = torch.tensor(0).to(self.device), torch.tensor(0).to(self.device) #-1 ## hack should leave this out.
 
         return GBMOut(
             seg_out=seg_object.mask_out,
