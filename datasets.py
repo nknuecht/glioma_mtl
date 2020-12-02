@@ -33,7 +33,6 @@ class GeneralDataset(Dataset):
                 genomic_csv_file = None,
                 transform=None,
                 seg_transform=None, ###
-                seg_probs_transform=None, ###
                 label='cluster',
                 classes=['wildtype', 'oligo', 'mutant'],
                 dataformat=None, # indicates what shape (or content) should be returned (2D or 3D, etc.)
@@ -68,7 +67,6 @@ class GeneralDataset(Dataset):
         self.root_dir = root_dir
         self.transform = transform
         self.seg_transform = seg_transform
-        self.seg_probs_transform =seg_probs_transform
         self.dataformat = dataformat
 
         self.returndims=returndims
@@ -197,7 +195,7 @@ class GeneralDataset(Dataset):
         if self.seg_transform: sample['seg_image'] = self.seg_transform(sample['seg_image'])
         if self.seg_transform: sample['seg_probs'] = self.seg_transform(sample['seg_probs'])
 
-        if tciaID != 0: # scan from the tcia.
+        if tciaID != 0 and label.isin([0, 1]): # scan from the tcia.
             ## if the sample is from the TCIA that means that you have survival (for sure)
             if gt_seg == 1:
                 if phase in ['train', 'val']: # means we have subtype labels
