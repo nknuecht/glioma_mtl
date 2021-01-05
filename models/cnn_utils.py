@@ -195,7 +195,8 @@ class UpSampler(nn.Module):
         self.up = CBR(nIn, nOut, 3, 1)
 
     def forward(self, inp):
-        return F.upsample(self.up(inp), mode='trilinear', scale_factor=2)
+        # return F.upsample(self.up(inp), mode='trilinear', scale_factor=2)
+        return F.interpolate(self.up(inp), scale_factor=2, mode='trilinear', align_corners=True)
 
 
 class PSPDec(nn.Module):
@@ -212,5 +213,6 @@ class PSPDec(nn.Module):
         inp_size = x.size()
         out_dim1, out_dim2, out_dim3 = int(inp_size[2] * self.scale), int(inp_size[3] * self.scale), int(inp_size[4] * self.scale)
         x_down = F.adaptive_avg_pool3d(x, output_size=(out_dim1, out_dim2, out_dim3))
-        return F.upsample(self.features(x_down), size=(inp_size[2], inp_size[3], inp_size[4]), mode='trilinear')
+        # return F.upsample(self.features(x_down), size=(inp_size[2], inp_size[3], inp_size[4]), mode='trilinear')
 
+        return F.interpolate(self.features(x_down), size=(inp_size[2], inp_size[3], inp_size[4]), mode='trilinear')

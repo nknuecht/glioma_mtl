@@ -180,7 +180,7 @@ class ESPNet(nn.Module):
         return SegOut(
             enc_out=out_l3,
             # mask_out=F.upsample(decoded, size=(dim0, dim1, dim2), mode='trilinear')
-            mask_out=nn.functional.interpolate(decoded, size=(dim0, dim1, dim2), mode='trilinear', align_corners=True)
+            mask_out=F.interpolate(decoded, size=(dim0, dim1, dim2), mode='trilinear', align_corners=True)
         )
 
 
