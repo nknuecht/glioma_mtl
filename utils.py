@@ -72,6 +72,8 @@ def get_data_splits(metadata_df, task='idh', mtl = False):
     elif task == '1p19q':
         classes = ['non-codel', 'oligo']
         val_df = metadata_df.loc[metadata_df['phase'] == 'val']
+    else:
+        print('ERROR: task must be "idh" or "1p19q"')
 
     # training set
     if mtl:
@@ -107,39 +109,23 @@ def class_accuracies(pred_tensor, label_tensor, dice_dict=None, probs_list = [],
         try:
             auc_score = roc_auc_score(label_arr, np.asarray(probs_list))
             f1 = f1_score(label_arr, pred_arr)
-            precision = precision_score(label_arr, pred_arr)
+            precision = precision_score(label_arr, pred_arr, zero_division=0)
             recall = recall_score(label_arr, pred_arr)
 
         except:
             print(' - - - - ERROR in auc calculation - - - - ')
-            print('label_arr:', label_arr)
-            print('probs_list:', probs_list)
             auc_score = roc_auc_score(label_arr, np.asarray(probs_list))
             auc_score = -1
     else:
         auc_score = None
     average_acc = np.mean(list(acc_dict.values()))
-    if verbose:
-        print('Accuracy, AUC, f1, precision, recall')
-        for i in range(len(classes)):
-            print(' -', classes[i], 'acc:\t\t', acc_dict[classes[i]])
-        print(' - Average acc:\t', average_acc)
-        if len(classes) == 2:
-            print(' - << AUC score >>\t', '<<', auc_score, '>>')
-            print(' - mean AUC/acc:\t', np.mean([average_acc, auc_score]))
-        print(' - f1:\t\t', f1)
-        print(' - Precision:\t', precision)
-        print(' - Recall:\t', recall)
+
     if dice_dict is not None:
         dice_wt = np.mean(dice_dict['dice_wt'])
         dice_core = np.mean(dice_dict['dice_core'])
         dice_enh = np.mean(dice_dict['dice_enh'])
 
-        if verbose:
-            print('\nDice Scores')
-            print(' - Dice whole tumor:\t\t', dice_wt)
-            print(' - Dice tumor core:\t\t', dice_core)
-            print(' - Dice enhancing tumor:\t', dice_enh)
+
     else:
         dice_wt, dice_core, dice_enh = -1, -1, -1
 
@@ -290,7 +276,7 @@ def cropVolume(img, data=False):
     img: 3D volume
     data: nibabel (nib) allows you to access 3D volume data using the get_data(). If you have already used it before
     calling this function, then it is false
-    
+
     Outputs
     ---------
     returns the crop positions acrss 3 axes (channel, width and height)
