@@ -100,7 +100,7 @@ class ESPNet(nn.Module):
              CBR((len(scales) + 1) * classes, classes, 3, 1),
              ASPBlock(classes, classes), # classes x 64 x 64 x 64
              # nn.Upsample(scale_factor=2), # classes x 128 x 128 x 128
-             nn.functional.interpolate(scale_factor=2, mode='trilinear', align_corners=True)
+             nn.functional.interpolate(scale_factor=2, mode='trilinear', align_corners=True),
              CBR(classes, classes, 7, 1), # classes x 128 x 128 x 128
              C(classes, classes, 1, 1) # classes x 128 x 128 x 128
         )
