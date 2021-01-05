@@ -141,8 +141,8 @@ def get_transformations(channels, resize_shape, prob_voxel_zero=0.2, prob_true=0
             ToTensor(),
         ])
 
-    seg_transformations = myTransforms.Compose([
-            ScaleToFixed((1, resize_shape[0],resize_shape[1],resize_shape[2]), 
+    seg_transformations = Compose([
+            ScaleToFixed((1, resize_shape[0],resize_shape[1],resize_shape[2]),
                                       interpolation=0,
                                       channels=1),
                                     randomflip,
@@ -150,7 +150,7 @@ def get_transformations(channels, resize_shape, prob_voxel_zero=0.2, prob_true=0
         ])
 
 
-    val_transformations = myTransforms.Compose([
+    val_transformations = Compose([
             MinMaxNormalize(),
             ScaleToFixed((channels, resize_shape[0],resize_shape[1],resize_shape[2]),
                                       interpolation=1,
