@@ -99,7 +99,8 @@ class ESPNet(nn.Module):
         self.classifier = self.classifier = nn.Sequential(
              CBR((len(scales) + 1) * classes, classes, 3, 1),
              ASPBlock(classes, classes), # classes x 64 x 64 x 64
-             nn.Upsample(scale_factor=2), # classes x 128 x 128 x 128
+             # nn.Upsample(scale_factor=2), # classes x 128 x 128 x 128
+             nn.functional.interpolate(scale_factor=2, mode='trilinear', align_corners=True)
              CBR(classes, classes, 7, 1), # classes x 128 x 128 x 128
              C(classes, classes, 1, 1) # classes x 128 x 128 x 128
         )
@@ -178,7 +179,8 @@ class ESPNet(nn.Module):
 
         return SegOut(
             enc_out=out_l3,
-            mask_out=F.upsample(decoded, size=(dim0, dim1, dim2), mode='trilinear')
+            # mask_out=F.upsample(decoded, size=(dim0, dim1, dim2), mode='trilinear')
+            mask_out=nn.functional.interpolate(decoded, size=(dim0, dim1, dim2), mode='trilinear', align_corners=True)
         )
 
 
