@@ -103,3 +103,58 @@ class Compose(object):
         for i, t in enumerate(self.transforms):
             image = t(image)
         return image
+
+
+
+def get_transformations(channels, resize_shape, prob_voxel_zero=0.2, prob_true=0.8, prob_channel_zero=0.5):
+    '''
+    This function performs data basic augmentation
+    Arguments
+    ---------
+    channels: number of MRI sequences in input (1 or 4)
+    resize_shape: new dimensions for each MRI input sequences
+    prob_voxel_zero: probabiltiy that we set any voxel to zero (conditioned on prob_true)
+    prob_true: probability that we set any voxels to zero
+    prob_channel_zero: probablity that a random sample is set to zero (only used with 4-channel input)
+
+    Outputs
+    ---------
+    train_transformations: augmented training data
+    seg_transformations: augmented segmentation labels
+    val_transformations: augmented validation data
+    '''
+    randomflip = RandomFlip()
+    if channels == 1:
+        # with 4 sequences we set 1 channel to zero with some probabilty
+        # but with 1 sequence we set 1 channel to zero with zero probabilty
+        prob_channel_zero = 0
+
+    # minimal data augmentation
+    train_transformations = Compose([
+            MinMaxNormalize(),
+            ScaleToFixed((channels, resize_shape[0],resize_shape[1],resize_shape[2]),
+                                      interpolation=1,
+                                      channels=channels),
+            ZeroSprinkle(prob_zero=prob_voxel_zero, prob_true=prob_true),
+            ZeroChannel(prob_zero=prob_channel_zero),
+            randomflip,
+            ToTensor(),
+        ])
+
+    seg_transformations = myTransforms.Compose([
+            ScaleToFixed((1, resize_shape[0],resize_shape[1],resize_shape[2]), 
+                                      interpolation=0,
+                                      channels=1),
+                                    randomflip,
+            ToTensor(),
+        ])
+
+
+    val_transformations = myTransforms.Compose([
+            MinMaxNormalize(),
+            ScaleToFixed((channels, resize_shape[0],resize_shape[1],resize_shape[2]),
+                                      interpolation=1,
+                                      channels=channels),
+            ToTensor(),
+        ])
+    return train_transformations, seg_transformations, val_transformations
