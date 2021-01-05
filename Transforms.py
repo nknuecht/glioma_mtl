@@ -27,9 +27,11 @@ class ScaleToFixed(object):
 class RandomFlip(object):
     """Randomly flips (horizontally as well as vertically) the given PIL.Image with a probability of 0.5
     """
+    def __init__(self, prob_flip=0.5):
+        self.prob_flip= prob_flip
     def __call__(self, image):
 
-        if random.random() < 0.5:
+        if random.random() < self.prob_flip:
             flip_type = np.random.randint(0, 3) # flip across any 3D axis
             image = np.flip(image, flip_type)
         return image
@@ -106,7 +108,7 @@ class Compose(object):
 
 
 
-def get_transformations(channels, resize_shape, prob_voxel_zero=0.2, prob_true=0.8, prob_channel_zero=0.5):
+def get_transformations(channels, resize_shape, prob_voxel_zero=0.2, prob_true=0.8, prob_channel_zero=0.5, mtl=False):
     '''
     This function performs data basic augmentation
     Arguments
@@ -123,11 +125,15 @@ def get_transformations(channels, resize_shape, prob_voxel_zero=0.2, prob_true=0
     seg_transformations: augmented segmentation labels
     val_transformations: augmented validation data
     '''
-    randomflip = RandomFlip()
+
     if channels == 1:
         # with 4 sequences we set 1 channel to zero with some probabilty
         # but with 1 sequence we set 1 channel to zero with zero probabilty
         prob_channel_zero = 0
+    if mtl:
+        randomflip = RandomFlip(prob_flip=0)
+    else:
+        randomflip = RandomFlip()
 
     # minimal data augmentation
     train_transformations = Compose([
@@ -145,7 +151,7 @@ def get_transformations(channels, resize_shape, prob_voxel_zero=0.2, prob_true=0
             ScaleToFixed((1, resize_shape[0],resize_shape[1],resize_shape[2]),
                                       interpolation=0,
                                       channels=1),
-                                    randomflip,
+            randomflip,
             ToTensor(),
         ])
 
