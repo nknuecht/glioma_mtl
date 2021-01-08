@@ -28,7 +28,7 @@ from models.ESPNet import ESPNet, SegOut
 class GeneralDataset(Dataset):
 
     def __init__(self,
-                csv_file,
+                metadata_df,
                 root_dir,
                 genomic_csv_file = None,
                 transform=None,
@@ -60,8 +60,9 @@ class GeneralDataset(Dataset):
             self.tcia2brats_df  = self.brats2tcia_df.dropna().reset_index().set_index('tciaID').rename(columns={'index':'bratsID'})
         else: self.tcia2brats_df = None
 
-        if os.path.isfile(str(csv_file)): self.metadata_df = pd.read_csv(csv_file, index_col=0)
-        else: self.metadata_df = csv_file
+        # if os.path.isfile(str(csv_file)): self.metadata_df = pd.read_csv(csv_file, index_col=0)
+        # else:
+        self.metadata_df = metadata_df
 
         self.label = label
         self.root_dir = root_dir
