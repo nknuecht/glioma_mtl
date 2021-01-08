@@ -83,7 +83,8 @@ class GBMNetMTL(nn.Module):
         self.modality = modality # if we have 1 channel input, we name the modality
         self.num_classes = n_classes
 
-         # segmentation network
+        # segmentation network
+        self.mask_net = ESPNet(classes=4, channels=4)
         if pretrained is not None:
             assert os.path.isfile(pretrained), 'Pretrained file does not exist. {}'.format(pretrained)
             weight_dict = torch.load(pretrained, map_location=device)
@@ -95,8 +96,6 @@ class GBMNetMTL(nn.Module):
                 self.mask_net.level0.conv = nn.Conv3d(1, 16, kernel_size=(7, 7, 7),
                                                          stride=(2, 2, 2), padding=(3, 3, 3), bias=False)
                 self.mask_net.level0.conv.weight = nn.Parameter(level0_weight)
-        else:
-            self.mask_net = ESPNet(classes=4, channels=4)
 
         self.mask_net = self.mask_net.train()
 
