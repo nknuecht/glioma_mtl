@@ -11,6 +11,10 @@ import skimage.transform as skTrans
 from scipy import stats
 from PIL import Image
 from scipy.special import softmax
+
+from models.mtl_model import GBMNetMTL
+import pickle
+import torch.optim as optim
 # from sklearn.metrics import f1_score, roc_auc_score, precision_score, recall_score
 
 from utils import get_bb_3D_torch, class_accuracies, get_dice_scores
@@ -143,9 +147,7 @@ def train(model,
                                               phase='train')
 
 
-        # writer.add_scalar('training loss',
-        #             running_loss / num_samples_processed,
-        #             epoch * len(dataloaders[phase]) + i)
+
         writer.add_scalar('training loss',
                     running_loss / num_samples_processed,
                     epoch * len(dataloaders[phase]) + i)
@@ -155,19 +157,7 @@ def train(model,
         writer.add_scalar('training cls loss',
                     running_cls_loss / num_samples_processed,
                     epoch * len(dataloaders[phase]) + i)
-        # writer.add_scalar('training surv loss',
-        #             running_surv_loss / num_samples_processed,
-        #             epoch * len(dataloaders[phase]) + i)
-        #
-        # writer.add_scalar('training dice wt',
-        #             dice_wt,
-        #             epoch * len(dataloaders[phase]) + i)
-        # writer.add_scalar('training dice core',
-        #             dice_core,
-        #             epoch * len(dataloaders[phase]) + i)
-        # writer.add_scalar('training dice enh',
-        #             dice_enh,
-        #             epoch * len(dataloaders[phase]) + i)
+
 
 
         writer.add_scalar('training acc',
@@ -180,15 +170,6 @@ def train(model,
                             np.mean([training_auc_score, training_class_acc]),
                             epoch * len(dataloaders[phase]) + i)
 
-        # writer.add_scalar('training f1',
-        #                     f1,
-        #                     epoch * len(dataloaders[phase]) + i)
-        # writer.add_scalar('training precision',
-        #                     precision,
-        #                     epoch * len(dataloaders[phase]) + i)
-        # writer.add_scalar('training recall',
-        #                     recall,
-        #                     epoch * len(dataloaders[phase]) + i)
 
 
 
@@ -291,21 +272,7 @@ def train(model,
                                               classes=classes,
                                               phase = 'no preds given')
         auc_acc_mean = np.mean([valid_slice_class_acc, valid_slice_class_AUC])
-        # if epoch % 2 == 0:
-        #     print('  >> val_loss', val_loss, 'epoch', epoch)
-        #     print('  >> val AUC ', valid_slice_class_AUC, '| mean acc auc', auc_acc_mean, '| acc',  valid_slice_class_acc, '| epoch', epoch)
 
-
-
-        # if verbose:
-        #     print('\nLoss')
-        #     print(" - Loss:\t", val_loss)
-        #     print(" - Seg Loss:\t", running_seg_loss / num_samples_processed)
-        #     print(" - Cls Loss:\t", running_cls_loss / num_samples_processed)
-        #     print(" - Surv Loss:\t", running_surv_loss / num_samples_processed)
-        #     print('----- end validation ------\n')
-        #
-        #     print('-- END OF EPOCH', epoch , '--')
 
         writer.add_scalar('val acc',
                             valid_slice_class_acc,
@@ -328,15 +295,6 @@ def train(model,
                             recall,
                             epoch * len(dataloaders[phase]) + i)
 
-        # writer.add_scalar('val dice wt',
-        #             dice_wt,
-        #             epoch * len(dataloaders[phase]) + i)
-        # writer.add_scalar('val dice core',
-        #             dice_core,
-        #             epoch * len(dataloaders[phase]) + i)
-        # writer.add_scalar('val dice enh',
-        #             dice_enh,
-        #             epoch * len(dataloaders[phase]) + i)
 
         if auc_acc_mean > best_naive_auc_acc_mean:
             best_naive_auc_acc_mean = auc_acc_mean
@@ -424,3 +382,141 @@ def train(model,
 
     print('Finished Training')
     return model, best_model_wts, best_naive_auc, best_naive_acc, best_naive_auc_acc_mean
+
+
+
+
+def mtl_experiment(dataloaders,
+                   data_transforms,
+                   dataset_sizes,
+                   best_model_loc,
+                   best_auc_list,
+                   best_acc_list,
+                   weight_outfile_prefix,
+                   channels,
+                   loss_weights,
+                   seg_4class_weights,
+                   seg_2class_weights,
+                   seg_loss_weight,
+                   surv_loss_weight,
+                   device,
+                   brats_seg_ids,
+                   writer,
+                   class_names,
+                   model_weights_dir='../model_weights/results/',
+                   epochs=50,
+                   iterations=10,
+                   standard_unlabled_loss=True,
+                   include_genomic_data=True,
+                   modality=None,
+                   take_surv_loss=False,
+                   seg_classes=4,
+                   g_in_features=50,
+                   g_out_features=128):
+
+    '''
+    This function trains an MTL model and saves its best weights
+    Arguments
+    ---------
+    dataloaders: dictonary of training and validation dataloaders
+    data_transforms: dictonary of training and validation data transforms
+    dataset_sizes: dictonary of the size of the training and validation datasets
+    best_model_loc: location of 3D-ESPNet's best weights (downloaded from 3D-ESPNet's repo)
+    best_auc_list: running auc scores over experiment
+    best_acc_list: running average accuracy scores over experiment
+    weight_outfile_prefix: prefix of files saved from this model
+    channels: MR channels (1 or 4)
+    seg_4class_weights: segmentation class weights for 4-class segmenation masks
+    seg_2class_weights: segmentation class weights for 2-class segmenation masks
+    seg_loss_weight: weight of segmentation pentaly in network loss function
+    surv_loss_weight: weight of survival pentaly in network loss function (not currently implemented)
+    device: cpu or gpu
+    brats_seg_ids: list of samples that have ground truth segmentation masks
+    writer: tensorboard write
+    class_names: names of classes to classify (currently 2)
+    model_weights_dir: directory to save best model weights to
+    epochs: number epochs
+    iterations: iteration experiment is on
+    standard_unlabled_loss: whether to take 2-class segmentation loss with before or after softmax
+    include_genomic_data: include SCNA input data
+    modality: for 1-channel input, indicate which MR modality serves as input
+    take_surv_loss: bool: add survival loss to network loss function (not currently implemented)
+    seg_classes: number of segmentation class (4 for ground truth segmentation masks; 2 otherwise)
+    g_in_features: size of SCNA input
+    g_out_features: size of hidden layer in SCNA input branch
+
+    Outputs
+    ---------
+    best_auc_list: running auc scores over experiment
+    best_acc_list: running average accuracy scores over experiment
+    '''
+
+    # mtl model
+    gbm_net = GBMNetMTL(g_in_features=g_in_features,
+                        g_out_features=g_out_features,
+                        n_classes=len(class_names),
+                        n_volumes=channels,
+                        seg_classes=seg_classes,
+                        pretrained=best_model_loc,
+                        class_loss_weights = loss_weights,
+                        seg_4class_weights=seg_4class_weights,
+                        seg_2class_weights=seg_2class_weights,
+                        seg_loss_scale=seg_loss_weight,
+                        surv_loss_scale=surv_loss_weight,
+                        device = device,
+                        brats_seg_ids=brats_seg_ids,
+                        standard_unlabled_loss=standard_unlabled_loss,
+                        fusion_net_flag=include_genomic_data,
+                        modality=modality,
+                        take_surv_loss=take_surv_loss)
+    gbm_net = gbm_net.to(device)
+
+    optimizer_gbmnet = optim.Adam(gbm_net.parameters(), lr=0.0005) # change to adami
+
+    exp_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer_gbmnet,
+                                                         mode='min',
+                                                         factor=0.1,
+                                                         patience=10, # number of epochs with no change
+                                                         verbose=True,
+                                                         threshold=0.0001,
+                                                         threshold_mode='rel',
+                                                         cooldown=0,
+                                                         min_lr=0,
+                                                         eps=1e-08)
+
+
+    # train mtl model
+    model, best_wts, best_auc, best_acc, best_auc_acc = train(model=gbm_net,
+                   dataloaders=dataloaders,
+                   data_transforms=data_transforms,
+                   optimizer=optimizer_gbmnet,
+                   scheduler=exp_scheduler,
+                   writer=writer,
+                   num_epochs=epochs,
+                   verbose=False,
+                   device=device,
+                   dataset_sizes=dataset_sizes,
+                   channels=channels,
+                   classes=class_names,
+                   weight_outfile_prefix=weight_outfile_prefix,
+                   pad=0)
+
+    del gbm_net
+    del model
+
+    # add epoch best score
+    best_auc_list.append(best_auc)
+    best_acc_list.append(best_acc)
+
+    # make model weight directory
+    if not os.path.exists(model_weights_dir):
+        os.makedirs(model_weights_dir)
+
+    # save best model weights of this epoch
+    results_outfile_dir = weight_outfile_prefix + '_epochs-' + str(epochs) +'_iterations-' + str(iterations)
+    with open('../model_weights/results/auc_' + results_outfile_dir + '.txt', "wb") as fp:   #Pickling
+        pickle.dump(best_auc_list, fp)
+    with open('../model_weights/results/acc_' + results_outfile_dir + '.txt', "wb") as fp:   #Pickling
+        pickle.dump(best_acc_list, fp)
+
+    return best_auc_list, best_acc_list
