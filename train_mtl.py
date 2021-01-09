@@ -3,7 +3,7 @@ import os
 import torch
 from functools import reduce
 import copy
-from tqdm import tqdm_notebook as tqdm
+from tqdm.notebook import tqdm
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from utils import get_bb
@@ -15,7 +15,6 @@ from scipy.special import softmax
 from models.mtl_model import GBMNetMTL
 import pickle
 import torch.optim as optim
-# from sklearn.metrics import f1_score, roc_auc_score, precision_score, recall_score
 
 from utils import get_bb_3D_torch, class_accuracies, get_dice_scores
 
@@ -31,12 +30,36 @@ def train(model,
           verbose=False,
           device='cpu',
           channels=4,
-          classes=['wildtype', 'oligo', 'mutant'],
-          pad=0,
+          classes=['wildtype', 'mutant'],
           weight_dir = '../model_weights/',
           weight_outfile_prefix='temp',
           pretrained=None):
 
+    '''
+    This function trains an MTL model and saves its best weights
+    Arguments
+    ---------
+    model: model to train
+    dataloaders: dictonary of training and validation dataloaders
+    data_transforms: dictonary of training and validation data transforms
+    optimizer: optimizer (Adam)
+    scheduler: training schedule
+    dataset_sizes: dictonary of the size of the training and validation datasets
+    writer: tensorboard write
+    verbose: enable print statements
+    device: cpu or gpu
+    channels: MR channels (1 or 4)
+    classes: names of classification classes
+    weight_dir: directory to save best model weights to
+    weight_outfile_prefix: prefix of files saved from this model
+    pretrained: whether pretrained model is passed
+
+    Outputs
+    ---------
+    model: trained model
+    best_model_wts: model weights for model with best AUC score
+    best_naive_auc: best AUC score
+    '''
 
     best_model_wts = copy.deepcopy(model.state_dict())
     naive_acc_outfile, naive_auc_outfile, vol_acc_outfile, vol_auc_outfile, naive_dice_outfile = '', '', '', '', ''
@@ -166,9 +189,7 @@ def train(model,
         writer.add_scalar('training AUC',
                             training_auc_score,
                             epoch * len(dataloaders[phase]) + i)
-        writer.add_scalar('training average AUC-AUC',
-                            np.mean([training_auc_score, training_class_acc]),
-                            epoch * len(dataloaders[phase]) + i)
+
 
 
 
@@ -228,7 +249,6 @@ def train(model,
                 output_probs = softmax(class_pred.detach().cpu().numpy(), axis=1)[:, 1]
                 _, slice_preds = torch.max(class_pred, 1) ## what do we do with the preds?
 
-                # labels = torch.tensor(labels, dtype=torch.long, device=device)
                 labels = labels.detach().clone()
 
 
@@ -262,8 +282,7 @@ def train(model,
         val_loss = running_loss / num_samples_processed
         scheduler.step(val_loss)
 
-        if verbose:
-            print('----- validation metrics ------')
+
         valid_slice_class_acc, valid_slice_class_AUC, dice_wt, dice_core, dice_enh, f1, precision, recall = class_accuracies(pred_tensor = valid_train['slice_preds'],
                                               label_tensor = valid_train['labels'],
                                               probs_list = valid_train['slice_probs'],
@@ -281,42 +300,8 @@ def train(model,
                             valid_slice_class_AUC,
                             epoch * len(dataloaders[phase]) + i)
 
-        writer.add_scalar('val average AUC-AUC',
-                            auc_acc_mean,
-                            epoch * len(dataloaders[phase]) + i)
-
-        writer.add_scalar('val f1',
-                            f1,
-                            epoch * len(dataloaders[phase]) + i)
-        writer.add_scalar('val precision',
-                            precision,
-                            epoch * len(dataloaders[phase]) + i)
-        writer.add_scalar('val recall',
-                            recall,
-                            epoch * len(dataloaders[phase]) + i)
 
 
-        if auc_acc_mean > best_naive_auc_acc_mean:
-            best_naive_auc_acc_mean = auc_acc_mean
-            print('New Best AUC-acc average:\t', best_naive_auc_acc_mean, '\tin epoch', epoch)
-            auc_acc_str = str(np.round(best_naive_auc_acc_mean, 4)).split('.')[-1]
-            auc_str = str(np.round(valid_slice_class_AUC, 4)).split('.')[-1]
-            acc_str = str(np.round(valid_slice_class_acc, 4)).split('.')[-1]
-
-            outfile_suffix = '_AUC-acc-mean_' + auc_acc_str + '_auc-' + auc_str + '_acc-' + acc_str +  '_epoch_' + str(epoch) + '.pth'
-            auc_acc_mean_dir = weight_dir + 'auc_acc_mean1/'
-
-            if os.path.isfile(naive_auc_outfile):
-                os.remove(naive_auc_outfile)
-            if not os.path.exists(auc_acc_mean_dir):
-                os.makedirs(auc_acc_mean_dir)
-            naive_auc_outfile = auc_acc_mean_dir + weight_outfile_prefix + outfile_suffix
-            torch.save({
-                        'epoch': epoch,
-                        'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict(),
-                        'loss': running_loss
-                        }, naive_auc_outfile)
         if epoch > 5:
             if valid_slice_class_AUC > best_naive_auc:
                 best_naive_auc = valid_slice_class_AUC
@@ -339,49 +324,10 @@ def train(model,
                             'loss': running_loss
                             }, naive_auc_outfile)
 
-        if dice_wt > best_wt_dice_score:
-            best_wt_dice_score = dice_wt
-            print('New Best Dice:\t', best_wt_dice_score, '\tin epoch', epoch)
-            outfile_suffix = '_dice_' + str(np.round(best_wt_dice_score, 4)).split('.')[-1] + '_epoch_' + str(epoch) +  '.pth'
-            dice_dir = weight_dir + 'dice1/'
-
-            if os.path.isfile(naive_dice_outfile):
-                os.remove(naive_dice_outfile)
-            if not os.path.exists(dice_dir):
-                os.makedirs(dice_dir)
-            naive_dice_outfile = dice_dir + weight_outfile_prefix + outfile_suffix
-            torch.save({
-                        'epoch': epoch,
-                        'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict(),
-                        'loss': running_loss
-                        }, naive_dice_outfile)
-
-        if valid_slice_class_acc > best_naive_acc:
-            best_naive_acc = valid_slice_class_acc
-            print('New Best ACC:\t', best_naive_acc, '\tin epoch', epoch)
-            # best_model_wts = copy.deepcopy(model.state_dict())
-            outfile_suffix = '_ACC_' + str(np.round(best_naive_acc, 4)).split('.')[-1] + '_epoch_' + str(epoch) +  '.pth'
-            acc_dir = weight_dir + 'acc1/'
-
-
-            if not os.path.exists(acc_dir):
-                os.makedirs(acc_dir)
-            if os.path.isfile(naive_acc_outfile):
-                os.remove(naive_acc_outfile)
-            naive_acc_outfile = acc_dir + weight_outfile_prefix + outfile_suffix
-            torch.save({
-                        'epoch': epoch,
-                        'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict(),
-                        'loss': running_loss
-                        }, naive_acc_outfile)
-
-
 
 
     print('Finished Training')
-    return model, best_model_wts, best_naive_auc, best_naive_acc, best_naive_auc_acc_mean
+    return model, best_model_wts, best_naive_auc
 
 
 
@@ -410,7 +356,6 @@ def mtl_experiment(dataloaders,
                    include_genomic_data=True,
                    modality=None,
                    take_surv_loss=False,
-                   seg_classes=4,
                    g_in_features=50,
                    g_out_features=128):
 
@@ -456,7 +401,6 @@ def mtl_experiment(dataloaders,
                         g_out_features=g_out_features,
                         n_classes=len(class_names),
                         n_volumes=channels,
-                        seg_classes=seg_classes,
                         pretrained=best_model_loc,
                         class_loss_weights = loss_weights,
                         seg_4class_weights=seg_4class_weights,
@@ -486,7 +430,7 @@ def mtl_experiment(dataloaders,
 
 
     # train mtl model
-    model, best_wts, best_auc, best_acc, best_auc_acc = train(model=gbm_net,
+    model, best_wts, best_auc = train(model=gbm_net,
                    dataloaders=dataloaders,
                    data_transforms=data_transforms,
                    optimizer=optimizer_gbmnet,
@@ -498,8 +442,7 @@ def mtl_experiment(dataloaders,
                    dataset_sizes=dataset_sizes,
                    channels=channels,
                    classes=class_names,
-                   weight_outfile_prefix=weight_outfile_prefix,
-                   pad=0)
+                   weight_outfile_prefix=weight_outfile_prefix)
 
     del gbm_net
     del model
