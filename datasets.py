@@ -43,7 +43,7 @@ class GeneralDataset(Dataset):
                 visualize=False,
                 modality=None,
                 brats2tcia_df=None,
-                null_genomic=False,
+                include_genomic_data=True,
                 pad=2,
                 pretrained=None,
                 device='cpu'):
@@ -78,7 +78,7 @@ class GeneralDataset(Dataset):
         self.visualize = visualize
         self.modality = modality
         self.pad = pad
-        self.null_genomic = null_genomic
+        self.include_genomic_data = include_genomic_data
         self.pretrained = pretrained
         # self.brats2tcia_df = brats2tcia_df
 
@@ -185,7 +185,7 @@ class GeneralDataset(Dataset):
 
 
 
-        if self.null_genomic:
+        if not self.include_genomic_data:
             sample['genomic_data'] = null_sample['genomic_data']
 
         some_seg = self.metadata_df.iloc[idx]['some_seg']
