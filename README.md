@@ -9,6 +9,8 @@ Gliomas make up 80\% of all primary malignant brain tumors in adults. The 2016 W
 
 <img src="./figures/subtype_curves.png" width="600">
 
+
+
 We use a multi-task learning system to learn IDH mutations, 1p/19q co-deletions, and survival from a combination of labeled and unlabeled magnetic resonance (MR) imaging data along with somatic copy number alteration (SCNA) data. Our model uses tumor segmentation as an auxiliary learning task.
 
 
@@ -23,7 +25,7 @@ There are 235 patients in the intersection of the BraTS MR dataset and the TCGA 
 
 <img src="../figures/data_panel.png" width="800">
 
-The BraTS MR data are 4-channel volumes composed of pre- (T1) and post-contrast (T1ce) T1-weighted modalities and T2-weighted (T2) and T2 Fluid-Attenuated Inversion Recovery (FLAIR) modalities (**A**).  Each MR sample has dimension $4 \times 240 \times 240 \times 155$ where each channel represents a modality. The hallmark enhancing ring of aggressive tumors is clearly visible on the T1ce modality.
+The BraTS MR data are 4-channel volumes composed of pre- (T1) and post-contrast (T1ce) T1-weighted modalities and T2-weighted (T2) and T2 Fluid-Attenuated Inversion Recovery (FLAIR) modalities (**A**).  Each MR sample has dimension 4 x 240 x 240 x 155 where each channel represents a modality. The hallmark enhancing ring of aggressive tumors is clearly visible on the T1ce modality.
 
 Four-class segmentation masks (**B**) are provided for the 285 patients in the BraTS training set. The outer class consists of peritumoral edema; the inner classes consist of necrotic tissue, non-enhancing tumor, and enhancing tumor. 
 
