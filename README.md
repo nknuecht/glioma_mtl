@@ -23,7 +23,7 @@ Multi-parametric MR data were downloaded for 542 patients from the [2018 BraTS t
 
 There are 235 patients in the intersection of the BraTS MR dataset and the TCGA glioma SCNA dataset. All of these patients have overall survival (OS) and 1p/19q co-deletion labels, while only 171 have IDH labels. We use the 160 patients in the BraTS 2018 training set with SCNA data in the TCGA as a training set; we use the 75 patients in the BraTS 2018 validation and testing sets with SCNA data as a validation set. Of the 160 patients in our training set, 112 have IDH labels; of the 75 patients in our training set, 59 have IDH labels.
 
-<img src="../figures/data_panel.png" width="800">
+<img src="./figures/data_panel.png" width="800">
 
 The BraTS MR data are 4-channel volumes composed of pre- (T1) and post-contrast (T1ce) T1-weighted modalities and T2-weighted (T2) and T2 Fluid-Attenuated Inversion Recovery (FLAIR) modalities (**A**).  Each MR sample has dimension 4 x 240 x 240 x 155 where each channel represents a modality. The hallmark enhancing ring of aggressive tumors is clearly visible on the T1ce modality.
 
