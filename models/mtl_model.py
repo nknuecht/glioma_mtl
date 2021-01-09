@@ -217,14 +217,20 @@ class GBMNetMTL(nn.Module):
             genome_out = self.genome_net(genome_data.float()) # pass SCNA data though input branch
             assert genome_out.dim() == enc_out_pool.dim()
 
+            # Survival risk (yet to implement)
+            surv_risk = self.surv_net(torch.cat([genome_out, enc_out_pool], dim=-1))
+
             # Fusion MR data and SCNA data
             out = self.fusion_net(torch.cat([genome_out, enc_out_pool], dim=-1))
         else:
+            # Survival risk (yet to implement)
+            surv_risk = self.surv_net_no_genomic(enc_out_pool)
+
+            # Fusion MR data and SCNA data
             out = self.lin(enc_out_pool)
 
 
-        # Survival Loss (yet to implement)
-        surv_risk = self.surv_net(torch.cat([genome_out, enc_out_pool], dim=-1))
+
         if self.take_surv_loss:
             temp = 0 # placeholder
         else:
