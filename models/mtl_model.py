@@ -52,7 +52,6 @@ class GBMNetMTL(nn.Module):
                  g_out_features,
                  n_classes,
                  n_volumes=4,
-                 seg_classes=4,
                  pretrained=None,
                  class_loss_weights=None,
                  seg_4class_weights=None,
