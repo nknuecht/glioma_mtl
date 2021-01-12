@@ -1,18 +1,15 @@
 import os
 import torch
 import pandas as pd
-from skimage import io #, transform
+from skimage import io
 import numpy as np
-# from torchvision import transforms, utils
 from torch.utils.data import Dataset
 from ast import literal_eval
 import copy
 
 
 from utils import largest_slice, min_max
-from format_data import raw2D, consolidate2D, t1ce_t1_subtraction_2D, crop2Dslice, stack2Dslices
-from format_data import raw3D, consolidate3D, t1ce_t1_subtraction_3D, crop3Dslice, stack3Dslices, modality3D, jointmodel3D, jointmodel3D_trim
-from format_data import mtl, modality3D_mtl, raw3D_mtl
+from format_data import cropped3D_mtl, modality3D_mtl, raw3D_mtl
 import skimage.transform as skTrans
 
 from utils import min_max
@@ -105,50 +102,28 @@ class GeneralDataset(Dataset):
         phase = self.metadata_df.iloc[idx]['phase']
         BraTS18ID = self.metadata_df.iloc[idx].name
 
-
+        # get SCNA data if avalible
         if self.genomic_csv_file is not None and BraTS18ID in self.genomic_df.index:
             genomic_data = self.genomic_df.loc[BraTS18ID].values
             genomic_data = genomic_data.astype(np.float)
         else:
             genomic_data = None
 
-        bb = (self.metadata_df.iloc[idx])['BoundingBox']
-        if len(str(bb)) > 3: # hack to see if bb exists (i.e., not nan)
-            bb = literal_eval(bb)
-        else:
-            bb = None
 
 
-        # if self.dataformat=='jointmodel' or self.dataformat=='mtl' or self.dataformat=='mtl_cropped':
-        sequence_type = ['seg', 'seg_wt', 't1', 't1ce', 'flair', 't2']
-        # else:
-        #     sequence_type = ['seg_wt', 't1', 't1ce', 'flair', 't2']
+        # make dictonary of paths to MRI volumnes (modalities) and segmenation masks
         mr_path_dict = {}
+        sequence_type = ['seg', 'seg_wt', 't1', 't1ce', 'flair', 't2']
         for seq in sequence_type:
-            mr_path_dict[seq] = os.path.join(self.root_dir,
-                     BraTS18ID,
-                     BraTS18ID + '_'+seq+'.nii.gz')
+            mr_path_dict[seq] = os.path.join(self.root_dir,BraTS18ID,BraTS18ID + '_'+seq+'.nii.gz')
 
 
 
-        seg_image_wt = None
+        # seg_image_wt = None
 
-        ## 3D
-        if self.dataformat == 'raw3D':
-            image, seg_image, seg_image_wt = raw3D(mr_path_dict=mr_path_dict, bb=bb)
-        elif self.dataformat == 'crop3Dslice':
-            image, seg_image, seg_image_wt= crop3Dslice(mr_path_dict=mr_path_dict, bb=bb)
 
-        elif self.dataformat == 'modality3D':
-            image, seg_image, seg_image_wt = modality3D(mr_path_dict=mr_path_dict, bb=bb, modality=self.modality)
-
-        elif self.dataformat == 'jointmodel':
-            image, seg_image = jointmodel3D_trim(mr_path_dict=mr_path_dict, bb=bb)
-        elif self.dataformat == 'mtl':
-            image, seg_image = mtl(mr_path_dict=mr_path_dict, pad=self.pad)
-        elif self.dataformat == 'mtl_cropped':
-            # image, seg_image, seg_probs = mtl(mr_path_dict=mr_path_dict, seg_model=self.seg_net, pad=self.pad, device=self.device)
-            image, seg_image, seg_image_wt = mtl(mr_path_dict=mr_path_dict, pad=self.pad)
+        if self.dataformat == 'cropped3D_mtl':
+            image, seg_image, seg_image_wt = cropped3D_mtl(mr_path_dict=mr_path_dict, pad=self.pad)
         elif self.dataformat == 'modality3D_mtl':
             image, seg_image, seg_image_wt = modality3D_mtl(mr_path_dict, pad=self.pad, modality=self.modality)
         elif self.dataformat == 'raw3D_mtl':
@@ -157,21 +132,22 @@ class GeneralDataset(Dataset):
         if seg_image is not None:
             seg_image[seg_image == 4] = 3
 
-        label = self.metadata_df.iloc[idx][self.label] # 'cluster'
+        # get sample metadata
+        label = self.metadata_df.iloc[idx][self.label]
         survival = self.metadata_df.iloc[idx]['OS']
         event = self.metadata_df.iloc[idx]['OS_EVENT']
         tciaID = self.metadata_df.iloc[idx]['tciaID']
 
+        # create null variable for samples who are missing data or labels
         image_null_value = np.zeros(image.shape).astype(np.float)
         shape = image.shape
         if len(image.shape) == 3:
             shape = (1, shape[0], shape[1], shape[2])
-
         seg_null_value = np.ones((shape[1], shape[2], shape[3])).astype(np.float)*255
         genomic_null_value = np.ones(self.genomic_df.shape[1]).astype(np.float) * 0
-
         null_int = 255
 
+        # create null and non-null samples
         sample = {'image': image, 'seg_image':seg_image, 'label': label, 'OS':survival,
                   'event':event, 'image_paths':mr_path_dict, 'tciaID':tciaID, 'bratsID':BraTS18ID, 'genomic_data':genomic_data}
 
@@ -183,18 +159,19 @@ class GeneralDataset(Dataset):
         else:
             sample['seg_probs'] = seg_image_wt
 
-
-
         if not self.include_genomic_data:
             sample['genomic_data'] = null_sample['genomic_data']
 
-        some_seg = self.metadata_df.iloc[idx]['some_seg']
+        # check existance of ground truth segmentation label
         gt_seg = self.metadata_df.iloc[idx]['gt_seg']
 
 
-        if self.transform: sample['image'] = self.transform(sample['image'])
-        if self.seg_transform: sample['seg_image'] = self.seg_transform(sample['seg_image'])
-        if self.seg_transform: sample['seg_probs'] = self.seg_transform(sample['seg_probs'])
+        if self.transform:
+            sample['image'] = self.transform(sample['image'])
+        if self.seg_transform:
+            sample['seg_image'] = self.seg_transform(sample['seg_image'])
+        if self.seg_transform:
+            sample['seg_probs'] = self.seg_transform(sample['seg_probs'])
 
         if tciaID != 0 and (label == 0 or label == 1): # scan from the tcia.
             ## if the sample is from the TCIA that means that you have survival (for sure)

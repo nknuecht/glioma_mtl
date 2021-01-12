@@ -33,7 +33,7 @@ def get_input_params(dataformat, mtl=True):
             channels = 4
             resize_shape = (64, 64, 64)
             if mtl:
-                dataformat = 'mtl_cropped'
+                dataformat = 'cropped3D_mtl'
         elif dataformat == 'raw3D':
             channels = 4
             resize_shape = (144, 144, 144)
