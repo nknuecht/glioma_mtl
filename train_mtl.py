@@ -449,7 +449,6 @@ def mtl_experiment(dataloaders,
 
     # add epoch best score
     best_auc_list.append(best_auc)
-    best_acc_list.append(best_acc)
 
     # make model weight directory
     if not os.path.exists(model_weights_dir):
@@ -459,7 +458,5 @@ def mtl_experiment(dataloaders,
     results_outfile_dir = weight_outfile_prefix + '_epochs-' + str(epochs) +'_iterations-' + str(iterations)
     with open('../model_weights/results/auc_' + results_outfile_dir + '.txt', "wb") as fp:   #Pickling
         pickle.dump(best_auc_list, fp)
-    with open('../model_weights/results/acc_' + results_outfile_dir + '.txt', "wb") as fp:   #Pickling
-        pickle.dump(best_acc_list, fp)
 
     return best_auc_list, best_acc_list
