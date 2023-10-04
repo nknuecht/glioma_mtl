@@ -58,3 +58,20 @@ Panel **C)** shows the distribution of labels in the combined 2018 BraTS and TCG
 Our MTL model uses the architecture of 3D-ESPNet with a classification branch connected to the output of the encoder. If desired, SCNA data can be passed though fully connected layers, concatenated with the average-pooled encoder output, and fed into a classifier to predict subtype class. The network decoder also produces a segmentation mask. We take the weighted cross-entropy loss of the subtype classification and tumor segmentation tasks. Our model accepts full brain multi-model MR volumes as well as cropped tumor volumes (shown here). Networks can also be trained on 1-channel, single-modality input.
 
 For training details and experimental results, see paper.
+
+
+
+For training details and experimental results, see the following paper.
+
+````
+```
+@inproceedings{nuechterlein2021leveraging,
+  title={Leveraging Unlabeled Data for Glioma Molecular Subtype and Survival Prediction},
+  author={Nuechterlein, Nicholas and Li, Beibin and Seyfio{\u{g}}lu, Mehmet Saygin and Mehta, Sachin and Cimino, Patrick J and Shapiro, Linda},
+  booktitle={2020 25th International Conference on Pattern Recognition (ICPR)},
+  pages={7149--7156},
+  year={2021},
+  organization={IEEE}
+}
+```
+````
