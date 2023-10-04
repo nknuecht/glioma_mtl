@@ -64,7 +64,6 @@ For training details and experimental results, see paper.
 For training details and experimental results, see the following paper.
 
 ````
-```
 @inproceedings{nuechterlein2021leveraging,
   title={Leveraging Unlabeled Data for Glioma Molecular Subtype and Survival Prediction},
   author={Nuechterlein, Nicholas and Li, Beibin and Seyfio{\u{g}}lu, Mehmet Saygin and Mehta, Sachin and Cimino, Patrick J and Shapiro, Linda},
@@ -73,5 +72,4 @@ For training details and experimental results, see the following paper.
   year={2021},
   organization={IEEE}
 }
-```
 ````
